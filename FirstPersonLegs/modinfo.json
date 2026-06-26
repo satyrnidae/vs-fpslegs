@@ -1,0 +1,14 @@
+{
+  "type": "code",
+  "modid": "firstpersonlegs",
+  "name": "First Person Legs",
+  "side": "client",
+  "requiredOnClient": false,
+  "requiredOnServer": false,
+  "authors": [ "saturniidae" ],
+  "description": "Renders the player's own legs in first person, mirroring how Immersive First Person draws the body.",
+  "version": "1.0.0",
+  "dependencies": {
+    "game": "1.22.3"
+  }
+}
