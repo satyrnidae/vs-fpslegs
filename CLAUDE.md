@@ -61,9 +61,16 @@ the vanilla first-person draw inline, which is the key thing to understand befor
 
 These were deliberate and reverting them reintroduces known bugs (see the inline comments):
 
-- **No custom projection / no depth offset.** Unlike the floating-hands path, this follows the
-  Immersive-First-Person body path: it uses the frame's normal world projection (not `HandRenderFov`)
-  and `depthOffset = 0`. A 60° hand FOV zoomed the legs up so they blocked the view.
+- **Fixed-FOV projection, `depthOffset = 0`.** The legs are drawn through a fixed vertical FOV
+  (`FirstPersonLegsConfig.LegRenderFov`, default 70°) via `Set3DProjection(ZFar, fov)` /
+  `Reset3DProjection()` — the same mechanism vanilla uses for the first-person *arms*
+  (`EntityPlayerShapeRenderer.DoRender3DOpaque`, gated on `HandRenderFov`). This makes the legs
+  invariant to the player's world FOV slider; with the plain world projection (the old approach) their
+  tops climbed into view at high FOV. A perspective FOV only scales screen X/Y — depth is
+  FOV-independent — so the legs stay correctly occluded by the world. We use a dedicated `LegRenderFov`
+  rather than the arms' `fpHandsFoV` because the look-down fold and size are tuned against a specific
+  FOV (70°); an earlier attempt that used a *narrow* hand FOV without re-tuning zoomed the legs up and
+  blocked the view. `depthOffset` stays 0 (the depth pull-toward-camera is a floating-hands-only trick).
 - **Rigid "look-down fold".** IFP folds the torso out of view when looking down via bone poses
   (`PlayerHeadController.SetTorsoOffsets`), which this mod can't drive. Instead it approximates the net
   effect rigidly: as the view tilts down it leans the assembly back (`LookDownLeanRad`) and pushes it

@@ -200,14 +200,21 @@ public class FpLegsRenderer : IRenderer
         if (shader == null || shader.Disposed) return;
 
         // ------------------------------------------------------------------
-        // 1. Use the NORMAL world projection — exactly like Immersive First Person.
-        //    IFP renders the body through the regular projection; the fixed "hand FOV"
-        //    is used only for the non-immersive floating-hands path. Using a 60° FOV here
-        //    zoomed the legs up so they dominated/blocked the view, so we leave the
-        //    frame's current projection untouched.
-        //    (ref: EntityPlayerShapeRenderer.DoRender3DOpaque — Set3DProjection(HandRenderFov)
-        //     is gated behind renderMode == FirstPerson, never ImmersiveFirstPerson.)
+        // 1. Render the legs through a FIXED field of view, mirroring how vanilla draws the
+        //    first-person ARMS. EntityPlayerShapeRenderer.DoRender3DOpaque swaps in a hand-FOV
+        //    projection (Set3DProjection(ZFar, HandRenderFov)) before drawing the arms and resets it
+        //    afterwards, so the arms keep the same on-screen footprint regardless of the player's world
+        //    FOV. With the world projection (used previously) the legs grow/shrink with the FOV slider
+        //    and their tops climb into view at high FOV. A perspective FOV only scales screen X/Y — depth
+        //    is FOV-independent — so the legs stay correctly occluded by the world while becoming
+        //    invariant to the world FOV.
+        //
+        //    We use a dedicated LegRenderFov (default 70°) instead of the arms' HandRenderFov: the
+        //    look-down fold and size below are tuned against a specific FOV, so the legs get their own
+        //    fixed value rather than tracking the player's separate fpHandsFoV preference.
         // ------------------------------------------------------------------
+        float legFovRad = (FirstPersonLegsCore.Config?.LegRenderFov ?? 70f) * (MathF.PI / 180f);
+        capi.Render.Set3DProjection(capi.Render.ShaderUniforms.ZFar, legFovRad);
 
         // ------------------------------------------------------------------
         // 2. Bind shader, upload per-frame uniforms.
@@ -218,6 +225,7 @@ public class FpLegsRenderer : IRenderer
         shader.Uniform("rgbaFogIn",       capi.Render.FogColor);
         shader.Uniform("fogMinIn",        capi.Render.FogMin);
         shader.Uniform("fogDensityIn",    capi.Render.FogDensity);
+        // Use the fixed-FOV projection set just above (reset at the end of the frame).
         shader.UniformMatrix("projectionMatrix", capi.Render.CurrentProjectionMatrix);
         shader.Uniform("alphaTest",       0.05f);
         shader.Uniform("lightPosition",   capi.Render.ShaderUniforms.LightPosition3D);
@@ -334,8 +342,11 @@ public class FpLegsRenderer : IRenderer
 
         capi.Render.GlPopMatrix();
         shader.Stop();
-        // Note: no Reset3DProjection — we never changed the projection (IFP uses the
-        // frame's normal projection).
+
+        // Restore the frame's normal world projection so later renderers (e.g. vanilla's FP arms at
+        // ~0.9) draw with the player's real FOV. Mirrors EntityPlayerShapeRenderer's Reset3DProjection
+        // after it finishes the arms.
+        capi.Render.Reset3DProjection();
     }
 
     // -----------------------------------------------------------------

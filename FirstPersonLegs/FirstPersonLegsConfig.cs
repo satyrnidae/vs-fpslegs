@@ -46,6 +46,18 @@ public class FirstPersonLegsConfig
     public float SizeMultiplier { get; set; } = 1.0f;
 
     /// <summary>
+    /// Fixed vertical field of view (degrees) the legs are rendered through, independent of the player's
+    /// world FOV — the same trick vanilla uses for the first-person arms (a fixed <c>fpHandsFoV</c>
+    /// projection). This keeps the legs' on-screen size/position constant as the world FOV changes; with
+    /// the world FOV the leg tops climb into view at high FOV. The look-down and size tuning is calibrated
+    /// against this value, so 70 matches the mod's default tuning — change it and you may need to retune.
+    /// </summary>
+    [Category("ClientSide")]
+    [Range(40.0, 120.0)]
+    [Description("Fixed FOV (degrees) the legs render through, so they don't change with the world FOV.")]
+    public float LegRenderFov { get; set; } = 70.0f;
+
+    /// <summary>
     /// When true, the renderer logs diagnostics on every leg-mesh rebuild (texture source, full-body
     /// and filtered vertex counts, resolved leg joints). Useful for debugging compatibility with
     /// player-model mods (e.g. PlayerModelLib custom races). Off by default to avoid log spam.
