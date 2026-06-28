@@ -281,7 +281,6 @@ public class FpLegsRenderer : IRenderer
         float bodyYaw   = entityPlayer.BodyYaw;               // ~smoothedBodyYaw (engine smooths it; close enough)
         float walkPitch = entityPlayer.WalkPitch;            // walk-cycle bob
         float swivel    = entityPlayer.sidewaysSwivelAngle;  // strafe lean
-        float size      = entityPlayer.Properties.Client.Size;
 
         // Look-down amount: 0 at the horizon, 1 looking straight down.
         float lookDown  = GameMath.Clamp(-(float)entityPlayer.Pos.GetViewVector().Y, 0f, 1f);
@@ -289,8 +288,13 @@ public class FpLegsRenderer : IRenderer
         // ---- Look-down fold tunables ----------------------------------------
         // Negative LeanRad folds the pelvis BACKWARD (away from the facing direction, toward
         // the bottom of the downward view). Positive folded it forward into the view.
-        const float LookDownLeanRad   = -0.3f; // max backward lean at straight-down (~26°)
-        const float LookDownBackShift = 0.15f;  // max metres pushed backward at straight-down
+        // Read live from config each frame so the optional ConfigLib GUI can tune them without a
+        // restart; falls back to the defaults when no config is loaded.
+        FirstPersonLegsConfig cfg = FirstPersonLegsCore.Config;
+        float LookDownLeanRad   = cfg?.LookDownLeanRad   ?? -0.3f; // max backward lean at straight-down (~26°)
+        float LookDownBackShift = cfg?.LookDownBackShift ?? 0.15f; // max metres pushed backward at straight-down
+        float size      = entityPlayer.Properties.Client.Size * (cfg?.SizeMultiplier ?? 1.0f);
+
         // ---------------------------------------------------------------------
 
         // World-space backward offset (opposite the body's facing direction). Forward in this

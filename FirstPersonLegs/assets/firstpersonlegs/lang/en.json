@@ -1,0 +1,7 @@
+{
+  "setting-FpLegsEnabled": "Enable first-person legs",
+  "setting-LookDownLeanRad": "Look-down lean (radians)",
+  "setting-LookDownBackShift": "Look-down back shift (meters)",
+  "setting-SizeMultiplier": "Leg size multiplier",
+  "setting-VerboseLogging": "Verbose logging"
+}
