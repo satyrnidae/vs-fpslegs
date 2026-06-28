@@ -289,8 +289,8 @@ public class FpLegsRenderer : IRenderer
         // ---- Look-down fold tunables ----------------------------------------
         // Negative LeanRad folds the pelvis BACKWARD (away from the facing direction, toward
         // the bottom of the downward view). Positive folded it forward into the view.
-        const float LookDownLeanRad   = -0.2f; // max backward lean at straight-down (~26°)
-        const float LookDownBackShift = 0.35f;  // max metres pushed backward at straight-down
+        const float LookDownLeanRad   = -0.3f; // max backward lean at straight-down (~26°)
+        const float LookDownBackShift = 0.15f;  // max metres pushed backward at straight-down
         // ---------------------------------------------------------------------
 
         // World-space backward offset (opposite the body's facing direction). Forward in this
