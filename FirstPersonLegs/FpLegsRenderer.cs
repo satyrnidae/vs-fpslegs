@@ -4,6 +4,7 @@ using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
@@ -47,10 +48,16 @@ public class FpLegsRenderer : IRenderer
     // -----------------------------------------------------------------
 
     /// <summary>
-    /// Render at 0.85 — after most opaque geometry (0.5) but before the hands (which appear to
-    /// run inside EntityPlayerShapeRenderer at ~0.9).
+    /// Render at 0.39 — after opaque terrain (<c>SystemRenderTerrain</c>, order 0.37) but before
+    /// entities/hands/held items (<c>SystemRenderEntities.OnRenderOpaque3D</c>, order 0.4, which also
+    /// draws the first-person arms and the currently-held item/block via the same
+    /// <c>EntityPlayerShapeRenderer.DoRender3DOpaque</c> call — there is no separate later pass for
+    /// hands). Held blocks with a translucent render pass are drawn with alpha-test + full depth write,
+    /// not real no-depth-write blending, so if the legs render AFTER them (the old 0.85 value) the held
+    /// block stamps solid depth first and the legs behind it fail the depth test and vanish instead of
+    /// showing through. Drawing legs first lets the held item's blended pass composite correctly on top.
     /// </summary>
-    public double RenderOrder => 0.85;
+    public double RenderOrder => 0.39;
 
     /// <summary>Ignored for global renderers; set to 1 as per convention.</summary>
     public int RenderRange => 1;
@@ -152,6 +159,13 @@ public class FpLegsRenderer : IRenderer
         EntityPlayer entityPlayer = player.Entity;
         if (entityPlayer == null) return;
 
+        // Don't render while sleeping. When the player lies down in a bed the camera drops to mattress
+        // height and the legs would fill the whole view, blocking it entirely. The tiredness behavior
+        // (VSEssentials) flags this in the synced "tiredness"/"isSleeping" watched attribute, so we read
+        // it directly via API types — no hard dependency on EntityBehaviorTiredness.
+        ITreeAttribute tirednessTree = entityPlayer.WatchedAttributes.GetTreeAttribute("tiredness");
+        if (tirednessTree != null && tirednessTree.GetInt("isSleeping", 0) > 0) return;
+
         // Drive the legs from the THIRD-PERSON animator, not entity.AnimManager. For the self player in
         // first person AnimManager returns the FP arm animator (selfFpAnimManager), which plays the "-fp"
         // animation variants intended for the floating-hands view and does not run the full body/leg
@@ -230,9 +244,12 @@ public class FpLegsRenderer : IRenderer
         shader.Uniform("alphaTest",       0.05f);
         shader.Uniform("lightPosition",   capi.Render.ShaderUniforms.LightPosition3D);
 
-        // No depth offset — IFP renders the body at true depth (the depth pull-toward-camera
-        // is a floating-hands-only trick to keep hands from clipping into walls).
-        shader.Uniform("depthOffset", 0f);
+        // A small negative depth bias so the portion of the legs that clips into world geometry (e.g.
+        // walking up to a wall) draws OVER the intersecting block face instead of being depth-occluded by
+        // it — the same gl_FragDepth trick vanilla uses for the first-person hands/held item
+        // (EntityPlayerShapeRenderer.DoRender3DOpaque), just with a smaller, leg-tuned magnitude since the
+        // legs sit farther from the camera than hands and a large bias reads as floating above the ground.
+        shader.Uniform("depthOffset", FirstPersonLegsCore.Config?.LegDepthOffset ?? -0.02f);
 
         // Per-entity lighting — sample from the block position below the player.
         Vec4f lightRgbs = capi.World.BlockAccessor.GetLightRGBs(
@@ -292,6 +309,7 @@ public class FpLegsRenderer : IRenderer
 
         // Look-down amount: 0 at the horizon, 1 looking straight down.
         float lookDown  = GameMath.Clamp(-(float)entityPlayer.Pos.GetViewVector().Y, 0f, 1f);
+        bool swimming   = entityPlayer.Swimming;
 
         // ---- Look-down fold tunables ----------------------------------------
         // Negative LeanRad folds the pelvis BACKWARD (away from the facing direction, toward
@@ -301,26 +319,56 @@ public class FpLegsRenderer : IRenderer
         FirstPersonLegsConfig cfg = FirstPersonLegsCore.Config;
         float LookDownLeanRad   = cfg?.LookDownLeanRad   ?? -0.3f; // max backward lean at straight-down (~26°)
         float LookDownBackShift = cfg?.LookDownBackShift ?? 0.15f; // max metres pushed backward at straight-down
+        float SwimBackShift     = cfg?.SwimBackShift     ?? 0.35f; // max metres pushed backward while swimming
+        float SwimDownShift     = cfg?.SwimDownShift     ?? 0.25f; // max metres pushed down while swimming
         float size      = entityPlayer.Properties.Client.Size * (cfg?.SizeMultiplier ?? 1.0f);
 
         // ---------------------------------------------------------------------
 
-        // World-space backward offset (opposite the body's facing direction). Forward in this
-        // frame is (sin, cos); backward is (-sin, -cos). Pushing back moves the pelvis toward
-        // the bottom of the downward view.
-        float backX = -MathF.Sin(bodyYaw) * LookDownBackShift * lookDown;
-        float backZ = -MathF.Cos(bodyYaw) * LookDownBackShift * lookDown;
+        float backX, backZ, downY, leanZ;
+        if (swimming)
+        {
+            // The vanilla "Swim" animation bakes an ~80-90° forward pitch into the LowerTorso/leg
+            // bone chain by itself (see FpLegsRenderer header/CLAUDE.md). Real Immersive First Person
+            // gets away with also stacking WalkPitch on top because its camera rides the same animated
+            // "Eyes" bone (EntityPlayer.updateLocalEyePosImmersiveFpMode), so camera and legs move
+            // together. Our camera is fixed (plain FP eye position), so adding WalkPitch here just
+            // over-rotates the legs past horizontal with nothing compensating — the original "rotated
+            // 90° forward and detached" bug. Skip WalkPitch entirely and instead rigidly shift the
+            // whole assembly backward/downward (scaled by how steeply the player is looking, matching
+            // WalkPitch's own -sin(pitch) target) so the already-pitched pelvis pivot reads as trailing
+            // behind the swimmer instead of hanging straight down under the camera.
+            float swimPitch = GameMath.Clamp(-(float)entityPlayer.Pos.GetViewVector().Y, -1f, 1f);
+            backX = -MathF.Sin(bodyYaw) * SwimBackShift * swimPitch;
+            backZ = -MathF.Cos(bodyYaw) * SwimBackShift * swimPitch;
+            downY = -SwimDownShift * MathF.Abs(swimPitch);
+            leanZ = 0f;
+        }
+        else
+        {
+            // World-space backward offset (opposite the body's facing direction). Forward in this
+            // frame is (sin, cos); backward is (-sin, -cos). Pushing back moves the pelvis toward
+            // the bottom of the downward view.
+            backX = -MathF.Sin(bodyYaw) * LookDownBackShift * lookDown;
+            backZ = -MathF.Cos(bodyYaw) * LookDownBackShift * lookDown;
+            downY = 0f;
+            leanZ = LookDownLeanRad * lookDown;
+        }
 
         float[] modelMat = Mat4f.Create();
         Mat4f.Identity(modelMat);
 
-        // Applied LAST to vertices (world space): slide the whole assembly backward as we look down.
-        Mat4f.Translate(modelMat, modelMat, backX, 0f, backZ);
+        // Applied LAST to vertices (world space): slide the whole assembly as we look down / swim.
+        Mat4f.Translate(modelMat, modelMat, backX, downY, backZ);
 
         Mat4f.RotateX(modelMat, modelMat, entityPlayer.Pos.Roll + shapeRotX * Deg);
         Mat4f.RotateY(modelMat, modelMat, bodyYaw + (90f + shapeRotY) * Deg);
         // Walk-cycle pitch + look-down backward lean (pivots near the feet → pelvis swings back).
-        Mat4f.RotateZ(modelMat, modelMat, walkPitch + shapeRotZ * Deg + LookDownLeanRad * lookDown);
+        // Skipped while swimming — see the swim branch above for why.
+        if (!swimming)
+            Mat4f.RotateZ(modelMat, modelMat, walkPitch + shapeRotZ * Deg + leanZ);
+        else
+            Mat4f.RotateZ(modelMat, modelMat, shapeRotZ * Deg);
         Mat4f.RotateX(modelMat, modelMat, swivel);
         Mat4f.Scale(modelMat, modelMat, size, size, size);
         Mat4f.Translate(modelMat, modelMat, -0.5f, 0f, -0.5f);
@@ -343,9 +391,9 @@ public class FpLegsRenderer : IRenderer
         capi.Render.GlPopMatrix();
         shader.Stop();
 
-        // Restore the frame's normal world projection so later renderers (e.g. vanilla's FP arms at
-        // ~0.9) draw with the player's real FOV. Mirrors EntityPlayerShapeRenderer's Reset3DProjection
-        // after it finishes the arms.
+        // Restore the frame's normal world projection so later renderers (e.g. vanilla's FP arms and
+        // held item, drawn via SystemRenderEntities at order 0.4) draw with the player's real FOV.
+        // Mirrors EntityPlayerShapeRenderer's Reset3DProjection after it finishes the arms.
         capi.Render.Reset3DProjection();
     }
 

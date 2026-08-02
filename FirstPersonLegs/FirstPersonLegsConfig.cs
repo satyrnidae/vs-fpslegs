@@ -36,6 +36,29 @@ public class FirstPersonLegsConfig
     public float LookDownBackShift { get; set; } = 0.12f;
 
     /// <summary>
+    /// Maximum distance (metres) the leg assembly is pushed backward in world space while swimming, at
+    /// full dive/surface pitch. The vanilla "Swim" animation bakes an ~80-90° forward pitch into the
+    /// LowerTorso/leg bone chain by itself; our fixed (non-eye-riding) first-person camera doesn't move
+    /// to compensate the way Immersive First Person's camera does (it rides the animated "Eyes" bone), so
+    /// without this the pitched pelvis pivot sits directly under the camera and the legs read as hanging
+    /// straight down instead of trailing behind the swimmer. Scaled by how steeply the player is looking
+    /// up/down (0 at the horizon, full at straight up/down). Pairs with <see cref="SwimDownShift"/>.
+    /// </summary>
+    [Category("ClientSide")]
+    [Range(0.0, 1.5)]
+    [Description("Backward shift (metres) of the legs while swimming, scaled by look pitch.")]
+    public float SwimBackShift { get; set; } = 1.0f;
+
+    /// <summary>
+    /// Maximum distance (metres) the leg assembly is pushed downward in world space while swimming, at
+    /// full dive/surface pitch. Pairs with <see cref="SwimBackShift"/>.
+    /// </summary>
+    [Category("ClientSide")]
+    [Range(0.0, 1.5)]
+    [Description("Downward shift (metres) of the legs while swimming, scaled by look pitch.")]
+    public float SwimDownShift { get; set; } = 0.25f;
+
+    /// <summary>
     /// Multiplier applied to the player's entity size when drawing the first-person legs, on top of the
     /// vanilla <c>Properties.Client.Size</c>. 1.0 leaves the legs at their natural size; raising it scales
     /// the whole leg assembly up (useful if the legs read as too small/distant in first person).
@@ -56,6 +79,20 @@ public class FirstPersonLegsConfig
     [Range(40.0, 120.0)]
     [Description("Fixed FOV (degrees) the legs render through, so they don't change with the world FOV.")]
     public float LegRenderFov { get; set; } = 70.0f;
+
+    /// <summary>
+    /// Depth bias (in normalized device depth units) applied to the legs via the shared FP-hand
+    /// shader's <c>gl_FragDepth</c> override — the same mechanism vanilla uses to keep the
+    /// first-person hands/held item from being occluded by world geometry they clip into. Negative
+    /// values pull the rendered depth closer to the camera, so the portion of the legs that pokes
+    /// into a block draws over that block's face instead of being hidden behind it. Kept small
+    /// relative to vanilla's hand value (around -0.3) since the legs sit farther from the camera and
+    /// a large bias makes them visibly float above/through the ground even when not clipping.
+    /// </summary>
+    [Category("ClientSide")]
+    [Range(-1.0, 0.0)]
+    [Description("Depth bias applied to the legs so clipped portions draw over intersecting block faces instead of being occluded by them.")]
+    public float LegDepthOffset { get; set; } = -0.02f;
 
     /// <summary>
     /// When true, the renderer logs diagnostics on every leg-mesh rebuild (texture source, full-body

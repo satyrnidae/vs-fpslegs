@@ -70,7 +70,12 @@ These were deliberate and reverting them reintroduces known bugs (see the inline
   FOV-independent — so the legs stay correctly occluded by the world. We use a dedicated `LegRenderFov`
   rather than the arms' `fpHandsFoV` because the look-down fold and size are tuned against a specific
   FOV (70°); an earlier attempt that used a *narrow* hand FOV without re-tuning zoomed the legs up and
-  blocked the view. `depthOffset` stays 0 (the depth pull-toward-camera is a floating-hands-only trick).
+  blocked the view. `depthOffset` uses a small negative bias (`FirstPersonLegsConfig.LegDepthOffset`,
+  default -0.02) — the same `gl_FragDepth` trick vanilla uses for the first-person hands/held item, so
+  the portion of the legs that clips into world geometry (e.g. walking up to a wall) draws over the
+  intersecting block face instead of being depth-occluded by it. Kept much smaller than vanilla's hand
+  value (~-0.3) since the legs sit farther from the camera; too large a bias makes them visibly float
+  above/through the ground even when not clipping.
 - **Rigid "look-down fold".** IFP folds the torso out of view when looking down via bone poses
   (`PlayerHeadController.SetTorsoOffsets`), which this mod can't drive. Instead it approximates the net
   effect rigidly: as the view tilts down it leans the assembly back (`LookDownLeanRad`) and pushes it
