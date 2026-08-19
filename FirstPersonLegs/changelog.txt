@@ -1,2 +1,6 @@
-v1.0.0 Changelog
+v1.0.7
+- Removed granular configuration options in favor of a much simpler design
+  - Granular controls were really useful for initial tuning, but they make the render very easy to mess up.
+
+v1.0.6
 - Initial release

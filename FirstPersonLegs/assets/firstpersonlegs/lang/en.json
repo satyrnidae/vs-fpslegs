@@ -1,8 +1,8 @@
 {
   "setting-FpLegsEnabled": "Enable first-person legs",
-  "setting-LookDownLeanRad": "Look-down lean (radians)",
-  "setting-LookDownBackShift": "Look-down back shift (meters)",
-  "setting-SizeMultiplier": "Leg size multiplier",
+  "description-FpLegsEnabled": "Render the player's own legs in first person.",
   "setting-LegRenderFov": "Leg render FOV (degrees)",
-  "setting-VerboseLogging": "Verbose logging"
+  "description-LegRenderFov": "Fixed FOV (degrees) the legs render through, so they don't change with the world FOV.",
+  "setting-VerboseLogging": "Verbose logging",
+  "description-VerboseLogging": "Log diagnostics on every leg-mesh rebuild. For debugging player-model compatibility."
 }

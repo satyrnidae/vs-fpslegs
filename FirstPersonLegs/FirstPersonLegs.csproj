@@ -43,14 +43,12 @@
       <HintPath>$(VINTAGE_STORY)/Lib/Microsoft.Data.Sqlite.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <!-- Optional dependency: compiled against a vendored copy, never copied to output. ConfigLib is
-         only touched at runtime when the user has the mod installed (guarded in FirstPersonLegsCore). -->
     <Reference Include="configlib">
       <HintPath>$(MSBuildProjectDirectory)/../libs/configlib.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
-    
+
 
 <ItemGroup>
   <Content Include="assets\**">

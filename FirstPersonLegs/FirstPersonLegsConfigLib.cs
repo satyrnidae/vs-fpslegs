@@ -5,12 +5,12 @@ using Vintagestory.API.Common;
 namespace FirstPersonLegs;
 
 /// <summary>
-/// Optional integration with the <c>configlib</c> mod, kept in its own class so that the only code
-/// that touches ConfigLib types lives here. The CLR resolves a method's type references when that
-/// method is first JIT-compiled, so as long as <see cref="TryRegister"/> is never called when
-/// ConfigLib is absent (see the <c>IsModEnabled</c> guard in <see cref="FirstPersonLegsCore"/>), the
-/// missing <c>configlib.dll</c> can never trip a type-load failure — making the dependency genuinely
-/// optional with no entry in modinfo.
+/// Optional integration with the <c>configlib</c> mod, kept in its own class so the only code touching
+/// ConfigLib types lives here. The CLR resolves a method's type references when that method is first
+/// JIT-compiled, so as long as <see cref="TryRegister"/> is never called when ConfigLib is absent (see
+/// the <c>IsModEnabled</c> guard in <see cref="FirstPersonLegsCore"/>), a missing <c>configlib.dll</c>
+/// can never trip a type-load failure - making the dependency genuinely optional with no entry in
+/// modinfo.
 /// </summary>
 internal static class FirstPersonLegsConfigLib
 {
@@ -29,9 +29,9 @@ internal static class FirstPersonLegsConfigLib
 
         string domain = FirstPersonLegsCore.ModId;
 
-        // Point ConfigLib at the same file the mod loads on its own, so there is a single source of
-        // truth whether or not ConfigLib is installed. ConfigLib reflects over the config object's
-        // public properties (and their [Description]/[Range]/[Category] attributes) to build settings.
+        // Point ConfigLib at the same file the mod loads on its own, so there's a single source of truth
+        // whether or not ConfigLib is installed. ConfigLib reflects over the config object's public
+        // properties (and their [Description]/[Range]/[Category] attributes) to build settings.
         configLib.RegisterCustomManagedConfig(
             domain,
             config,
@@ -39,8 +39,8 @@ internal static class FirstPersonLegsConfigLib
             onSyncedFromServer: onChanged,
             onSettingChanged: _ => onChanged());
 
-        // ConfigLib does not push the file's parsed values into the object on registration, only on
-        // later edits — so pull the authoritative values in once now, then let the renderer apply them.
+        // ConfigLib doesn't push the file's parsed values into the object on registration, only on later
+        // edits - pull the authoritative values in once now, then let the renderer apply them
         configLib.GetConfig(domain)?.AssignSettingsValues(config);
         onChanged();
 
