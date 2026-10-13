@@ -12,7 +12,14 @@ Follow the [Code Mod development environment setup guide](https://wiki.vintagest
 
 ### Vendored dependency scripts (worktree setup)
 
-Dependency management for mods is handled by `tools/get_deps.sh` / `tools/get_deps.ps1`, which download the mods listed in `vendor_libs.json` from the Vintage Story mod DB into the repo's vendor directory (e.g. `FirstPersonLegs/libs/configlib.dll`). If those scripts exist, run them first to fetch any vendored game/mod DLLs before building; otherwise fall back to pointing `$VINTAGE_STORY` at a full game install that already contains the bundled mods (`configlib`, `VSSurvivalMod`, `VSEssentials`, `VSCreativeMod`).
+Dependency management for mods is handled by `tools/get-deps.sh` / `tools/get-deps.ps1`, which download the mods listed in `vendor_deps.json` from the Vintage Story mod DB into the repo's vendor directory (e.g. `FirstPersonLegs/libs/configlib.dll`). If those scripts exist, run them first to fetch any vendored game/mod DLLs before building; otherwise fall back to pointing `$VINTAGE_STORY` at a full game install that already contains the bundled mods (`configlib`, `VSSurvivalMod`, `VSEssentials`, `VSCreativeMod`).
+
+Run from the repo root:
+
+- **Shell:** `./tools/get-deps.sh [--deps <path>] [--out <path>] [--no-extract]` (needs `curl`, `jq`, `unzip`)
+- **PowerShell:** `.\tools\get-deps.ps1 [-DepsFile <path>] [-OutDir <path>] [-NoExtract]`
+
+`--no-extract` / `-NoExtract` downloads the zips without extracting their top-level DLLs. The bundled game mods (`game`, `survival`, `creative`, `essentials`) are skipped - they ship with the install, so only non-bundled deps like `configlib` are fetched.
 
 ## Build & run
 
