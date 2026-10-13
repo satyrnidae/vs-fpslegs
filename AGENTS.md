@@ -4,7 +4,7 @@ Guidance for agents working in this repository: build toolchain, dependency setu
 
 ## What this is
 
-A client-only Vintage Story mod (game 1.20.0, .NET 10) that renders the player's own legs in first person, reproducing how vanilla *Immersive First Person* mode draws the body. There is no server component - `FirstPersonLegsCore.ShouldLoad` returns false on the server side.
+A client-only Vintage Story mod (game 1.22.3, .NET 10) that renders the player's own legs in first person, reproducing how vanilla *Immersive First Person* mode draws the body. There is no server component - `FirstPersonLegsCore.ShouldLoad` returns false on the server side.
 
 ## Dependency setup
 
